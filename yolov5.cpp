@@ -1,8 +1,6 @@
-// Include Libraries.
 #include <opencv2/opencv.hpp>
 #include <fstream>
 
-// Namespaces.
 using namespace cv;
 using namespace std;
 using namespace cv::dnn;
@@ -12,7 +10,7 @@ const float INPUT_WIDTH = 640.0;
 const float INPUT_HEIGHT = 480.0;
 const float SCORE_THRESHOLD = 0.5;
 const float NMS_THRESHOLD = 0.45;
-const float CONFIDENCE_THRESHOLD = 0.45;
+const float CONFIDENCE_THRESHOLD = 0.60;
 
 // Text parameters.
 const float FONT_SCALE = 0.7;
@@ -27,7 +25,7 @@ Scalar RED = Scalar(0,0,255);
 
 
 // Draw the predicted bounding box.
-void draw_label(Mat& input_image, string label, int left, int top)
+void draw_label(Mat& input_image, const string& label, int left, int top)
 {
     // Display the label at the top of the bounding box.
     int baseLine;
@@ -110,7 +108,7 @@ Mat post_process(Mat &input_image, vector<Mat> &outputs, const vector<string> &c
                 int width = int(w * x_factor);
                 int height = int(h * y_factor);
                 // Store good detections in the boxes vector.
-                boxes.push_back(Rect(left, top, width, height));
+                boxes.emplace_back(left, top, width, height);
             }
 
         }
@@ -122,8 +120,12 @@ Mat post_process(Mat &input_image, vector<Mat> &outputs, const vector<string> &c
     // Perform Non Maximum Suppression and draw predictions.
     vector<int> indices;
     NMSBoxes(boxes, confidences, SCORE_THRESHOLD, NMS_THRESHOLD, indices);
-    for (int i = 0; i < indices.size(); i++) 
-    {
+    std::ofstream outfile("output.txt");
+
+    std::map<int, std::tuple<std::string, std::string, float, std::string>> best_detections;
+    const float MAX_CONFIDENCE = 1.0;
+
+    for (int i = 0; i < indices.size(); i++) {
         int idx = indices[i];
         Rect box = boxes[idx];
 
@@ -131,15 +133,43 @@ Mat post_process(Mat &input_image, vector<Mat> &outputs, const vector<string> &c
         int top = box.y;
         int width = box.width;
         int height = box.height;
+        float confidence = confidences[idx];
+
         // Draw bounding box.
         rectangle(input_image, Point(left, top), Point(left + width, top + height), BLUE, 3*THICKNESS);
 
+        // Define box corners
+        Point topLeft = Point(left, top);
+        string topLeftStr = "[" + std::to_string(topLeft.x) + ", " + std::to_string(topLeft.y) + "]";
+
+        Point bottomRight = Point(left + width, top + height);
+        string bottomRightStr = "[" + std::to_string(bottomRight.x) + ", " + std::to_string(bottomRight.y) + "]";
+
         // Get the label for the class name and its confidence.
         string label = format("%.2f", confidences[idx]);
-        label = class_name[class_ids[idx]] + ":" + label;
+        // std::cout << topLeftStr << " " << bottomRightStr << " " << class_ids[idx] << " " << class_name[class_ids[idx]] << std::endl;
+        int class_id = class_ids[idx];
+        string class_name_str = class_name[class_ids[idx]];
+        // label = class_name[class_ids[idx]] + ":" + label; // Uncomment this line to display class name and confidence.
+
         // Draw class labels.
-        draw_label(input_image, label, left, top);
+        // draw_label(input_image, label, left, top); // Uncomment this line to display class name and confidence.
+
+        if (best_detections.find(class_id) == best_detections.end()) {
+            if (confidence <= MAX_CONFIDENCE && confidence > CONFIDENCE_THRESHOLD)
+                best_detections[class_id] = std::make_tuple(topLeftStr, bottomRightStr, confidence, label);
+        }
+        else if (confidence > std::get<2>(best_detections[class_id]) && confidence <= MAX_CONFIDENCE) {
+            best_detections[class_id] = std::make_tuple(topLeftStr, bottomRightStr, confidence, label);
+        }
     }
+    std::cout << "Best detections: " << std::endl;
+    for (const auto& kvp : best_detections) {
+//        std::cout << "Label: " << std::get<3>(kvp.second) << std::endl;
+        std::cout << std::get<0>(kvp.second) << " " << std::get<1>(kvp.second) << " " << kvp.first << " " << class_name[kvp.first] << std::endl;
+        std::cout << "Confidence: " << std::get<2>(kvp.second) << std::endl;
+    }
+    outfile.close();
     return input_image;
 }
 
