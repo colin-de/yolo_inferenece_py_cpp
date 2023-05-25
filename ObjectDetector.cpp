@@ -1,32 +1,26 @@
-// Include Libraries.
 #include <opencv2/opencv.hpp>
 #include <fstream>
 
-// Namespaces.
 using namespace cv;
 using namespace std;
 using namespace cv::dnn;
 
 class ObjectDetector {
-    // Constants.
     const float INPUT_WIDTH = 640.0;
     const float INPUT_HEIGHT = 480.0;
     const float SCORE_THRESHOLD = 0.5;
     const float NMS_THRESHOLD = 0.45;
     const float CONFIDENCE_THRESHOLD = 0.60;
 
-    // Text parameters.
     const float FONT_SCALE = 0.7;
     const int FONT_FACE = FONT_HERSHEY_SIMPLEX;
     const int THICKNESS = 1;
 
-    // Colors.
     Scalar BLACK = Scalar(0,0,0);
     Scalar BLUE = Scalar(255, 178, 50);
     Scalar YELLOW = Scalar(0, 255, 255);
     Scalar RED = Scalar(0,0,255);
 
-    Net net;
     vector<string> class_list;
 
 public:
@@ -45,29 +39,25 @@ public:
     }
 
     Mat detect(Mat& frame) {
-        vector<Mat> detections = pre_process(frame);
+        vector<Mat> detections = pre_process(frame, net);
         Mat cloned_frame = frame.clone();
-        return post_process(cloned_frame, detections, class_list);
+        Mat img = post_process(cloned_frame, detections, class_list);
+        return img;
     }
 
+    Net net;
 private:
     void draw_label(Mat& input_image, const string& label, int left, int top) {
         int baseLine;
-
         Size label_size = getTextSize(label, FONT_FACE, FONT_SCALE, THICKNESS, &baseLine);
-
         top = max(top, label_size.height);
-
         Point tlc = Point(left, top);
-
         Point brc = Point(left + label_size.width, top + label_size.height + baseLine);
-
         rectangle(input_image, tlc, brc, BLACK, FILLED);
-
         putText(input_image, label, Point(left, top + label_size.height), FONT_FACE, FONT_SCALE, YELLOW, THICKNESS);
     }
 
-    vector<Mat> pre_process(Mat &input_image) {
+    vector<Mat> pre_process(Mat &input_image, Net &net) {
         // Convert to blob.
         Mat blob;
         blobFromImage(input_image, blob, 1./255., Size(INPUT_WIDTH, INPUT_HEIGHT), Scalar(), true, false);
@@ -95,16 +85,13 @@ private:
 
         //    const int dimensions = 85;
         const int dimensions = 8;
-        const int rows = 25200;
-        // Iterate through 25200 detections.
+        const int rows = 20000;
+
         for (int i = 0; i < rows; ++i)
         {
             float confidence = data[4];
-            // Discard bad detections and continue.
-            if (confidence >= CONFIDENCE_THRESHOLD)
-            {
+            if (confidence >= CONFIDENCE_THRESHOLD){
                 float * classes_scores = data + 5;
-                // Create a 1x85 Mat and store class scores of 80 classes.
                 Mat scores(1, class_name.size(), CV_32FC1, classes_scores);
                 // Perform minMaxLoc and acquire index of best class score.
                 Point class_id;
@@ -139,11 +126,8 @@ private:
             data += 8;
         }
 
-        // Perform Non Maximum Suppression and draw predictions.
         vector<int> indices;
         NMSBoxes(boxes, confidences, SCORE_THRESHOLD, NMS_THRESHOLD, indices);
-        std::ofstream outfile("output.txt");
-
         std::map<int, std::tuple<std::string, std::string, float, std::string>> best_detections;
         const float MAX_CONFIDENCE = 1.0;
 
@@ -187,11 +171,11 @@ private:
         }
         std::cout << "Best detections: " << std::endl;
         for (const auto& kvp : best_detections) {
-        //        std::cout << "Label: " << std::get<3>(kvp.second) << std::endl;
+//        std::cout << "Label: " << std::get<3>(kvp.second) << std::endl;
             std::cout << std::get<0>(kvp.second) << " " << std::get<1>(kvp.second) << " " << kvp.first << " " << class_name[kvp.first] << std::endl;
             std::cout << "Confidence: " << std::get<2>(kvp.second) << std::endl;
         }
-        outfile.close();
+
         return input_image;
     }
 };
@@ -206,6 +190,11 @@ int main() {
 
     // Detect objects in the image.
     Mat result = detector.detect(frame);
+    vector<double> layersTimes;
+    double freq = getTickFrequency() / 1000;
+    double t = detector.net.getPerfProfile(layersTimes) / freq;
+    string label = format("Inference time : %.2f ms", t);
+    putText(result, label, Point(20, 40), FONT_HERSHEY_SIMPLEX, 0.7, Scalar(0,0,255));
 
     // Display the result.
     imshow("Output", result);

@@ -119,6 +119,9 @@ Mat post_process(Mat &input_image, vector<Mat> &outputs, const vector<string> &c
 
     // Perform Non Maximum Suppression and draw predictions.
     vector<int> indices;
+    for (auto &&item : boxes) {
+        std::cout << item << std::endl;
+    }
     NMSBoxes(boxes, confidences, SCORE_THRESHOLD, NMS_THRESHOLD, indices);
     std::ofstream outfile("output.txt");
 
@@ -162,6 +165,7 @@ Mat post_process(Mat &input_image, vector<Mat> &outputs, const vector<string> &c
         else if (confidence > std::get<2>(best_detections[class_id]) && confidence <= MAX_CONFIDENCE) {
             best_detections[class_id] = std::make_tuple(topLeftStr, bottomRightStr, confidence, label);
         }
+        // need to consider multiple detections of the same class
     }
     std::cout << "Best detections: " << std::endl;
     for (const auto& kvp : best_detections) {
