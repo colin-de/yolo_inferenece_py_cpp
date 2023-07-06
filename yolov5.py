@@ -107,19 +107,19 @@ def post_process(input_image, outputs):
 
 if __name__ == '__main__':
 	# Load class names.
-	classesFile = "sd.names"
-	# classesFile = "coco.names"
+	classesFile = "fortiss.names"
+	# classesFile = "sd.names"
 	classes = None
 	with open(classesFile, 'rt') as f:
 		classes = f.read().rstrip('\n').split('\n')
 
 	# Load image.
 	# frame = cv2.imread('sample.jpg')
-	frame = cv2.imread('000023.png')
+	frame = cv2.imread('img/1.png')
 
 	# Give the weight files to the model and load the network using them.
-	# modelWeights = "yolov5s.onnx"
-	modelWeights = "sd.onnx"
+	# modelWeights = "best_grey.onnx"
+	modelWeights = "best_grey.onnx"
 	net = cv2.dnn.readNet(modelWeights)
 
 	# Process image.

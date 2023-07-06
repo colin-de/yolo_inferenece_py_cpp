@@ -128,7 +128,8 @@ private:
 
         vector<int> indices;
         NMSBoxes(boxes, confidences, SCORE_THRESHOLD, NMS_THRESHOLD, indices);
-        std::map<int, std::tuple<std::string, std::string, float, std::string>> best_detections;
+//        std::map<int, std::tuple<std::string, std::string, float, std::string>> best_detections;
+        std::unordered_map<int, std::tuple<std::string, std::string, float, std::string>> best_detections;
         const float MAX_CONFIDENCE = 1.0;
 
         for (int i = 0; i < indices.size(); i++) {
@@ -159,14 +160,18 @@ private:
             // label = class_name[class_ids[idx]] + ":" + label; // Uncomment this line to display class name and confidence.
 
             // Draw class labels.
-            // draw_label(input_image, label, left, top); // Uncomment this line to display class name and confidence.
+             draw_label(input_image, label, left, top); // Uncomment this line to display class name and confidence.
 
-            if (best_detections.find(class_id) == best_detections.end()) {
-                if (confidence <= MAX_CONFIDENCE && confidence > CONFIDENCE_THRESHOLD)
-                    best_detections[class_id] = std::make_tuple(topLeftStr, bottomRightStr, confidence, label);
-            }
-            else if (confidence > std::get<2>(best_detections[class_id]) && confidence <= MAX_CONFIDENCE) {
+//            if (best_detections.find(class_id) == best_detections.end()) {
+//                if (confidence <= MAX_CONFIDENCE && confidence > CONFIDENCE_THRESHOLD)
+//                    best_detections[class_id] = std::make_tuple(topLeftStr, bottomRightStr, confidence, label);
+//            }
+//            else if (confidence > std::get<2>(best_detections[class_id]) && confidence <= MAX_CONFIDENCE) {
+//                best_detections[class_id] = std::make_tuple(topLeftStr, bottomRightStr, confidence, label);
+//            }
+            if (confidence <= MAX_CONFIDENCE) {
                 best_detections[class_id] = std::make_tuple(topLeftStr, bottomRightStr, confidence, label);
+                std::cout << "class_id: " << class_id << std::endl;
             }
         }
         std::cout << "Best detections: " << std::endl;
@@ -183,10 +188,11 @@ private:
 
 int main() {
     // Create an object detector with the path to the model and the class list.
-    ObjectDetector detector("../best.onnx", "../fortiss.names");
+    ObjectDetector detector("../best_grey.onnx", "../fortiss.names");
+    // ObjectDetector detector("../sd_table.onnx", "../sd.names");
 
     // Load an image.
-    Mat frame = detector.loadImage("../000000.png");
+    Mat frame = detector.loadImage("../img/1.png");
 
     // Detect objects in the image.
     Mat result = detector.detect(frame);

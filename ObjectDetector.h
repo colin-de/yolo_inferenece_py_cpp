@@ -171,7 +171,7 @@ private:
             // label = class_name[class_ids[idx]] + ":" + label; // Uncomment this line to display class name and confidence.
 
             // Draw class labels.
-            // draw_label(input_image, label, left, top); // Uncomment this line to display class name and confidence.
+            draw_label(input_image, label, left, top); // Uncomment this line to display class name and confidence.
 
             if (best_detections.find(class_id) == best_detections.end()) {
                 if (confidence <= MAX_CONFIDENCE && confidence > CONFIDENCE_THRESHOLD)
